@@ -24,7 +24,7 @@ def evaluate(args):
   assert snapshot.exists(), 'The model path {:} does not exist'
   print ('The face bounding box is {:}'.format(args.face))
   assert len(args.face) == 4, 'Invalid face input : {:}'.format(args.face)
-  snapshot = torch.load(snapshot)
+  snapshot = torch.load(snapshot, map_location=torch.device('cpu'))
 
   mean_fill   = tuple( [int(x*255) for x in [0.485, 0.456, 0.406] ] )
   normalize   = transforms.Normalize(mean=[0.485, 0.456, 0.406],

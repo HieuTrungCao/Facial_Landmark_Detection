@@ -18,3 +18,4 @@ cache_data/cache/
 */*/__pycache__/
 __pycache__/
 datasets/300W-Style
+my_env
