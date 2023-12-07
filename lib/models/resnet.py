@@ -3,15 +3,10 @@ import math
 import torch.utils.model_zoo as model_zoo
 from .model_utils import load_weight_from_dict
 
-__all__ = ['ResNet', 'resnet18', 'resnet34', 'resnet50', 'resnet101',
-           'resnet152']
+__all__ = ['resnet152']
 
 
 model_urls = {
-    'resnet18': 'https://download.pytorch.org/models/resnet18-5c106cde.pth',
-    'resnet34': 'https://download.pytorch.org/models/resnet34-333f7ec4.pth',
-    'resnet50': 'https://download.pytorch.org/models/resnet50-19c8e357.pth',
-    'resnet101': 'https://download.pytorch.org/models/resnet101-5d3b4d8f.pth',
     'resnet152': 'https://download.pytorch.org/models/resnet152-b121ed2d.pth',
 }
 
@@ -151,22 +146,6 @@ class ResNet(nn.Module):
         cls = self.cls(feature)
 
         return feature, cls
-
-
-def resnet50(pretrained=False, **kwargs):
-  model = ResNet(Bottleneck, [3, 4, 6, 3], **kwargs)
-  if pretrained:
-    model.load_state_dict(model_zoo.load_url(model_urls['resnet50']))
-  return model
-
-
-def resnet101(pretrained=False, **kwargs):
-  model = ResNet(Bottleneck, [3, 4, 23, 3], **kwargs)
-  if pretrained:
-    weights = model_zoo.load_url( model_urls['resnet101'] )
-    load_weight_from_dict(model, weights, None, False)
-  return model
-
 
 def resnet152(pretrained=False, **kwargs):
   model = ResNet(Bottleneck, [3, 8, 36, 3], **kwargs)

@@ -64,42 +64,42 @@ class TrainScale2WH(object):
 
 
 
-class ToPILImage(object):
-  """Convert a tensor to PIL Image.
-  Converts a torch.*Tensor of shape C x H x W or a numpy ndarray of shape
-  H x W x C to a PIL.Image while preserving the value range.
-  """
+# class ToPILImage(object):
+#   """Convert a tensor to PIL Image.
+#   Converts a torch.*Tensor of shape C x H x W or a numpy ndarray of shape
+#   H x W x C to a PIL.Image while preserving the value range.
+#   """
 
-  def __call__(self, pic):
-    """
-    Args:
-      pic (Tensor or numpy.ndarray): Image to be converted to PIL.Image.
-    Returns:
-      PIL.Image: Image converted to PIL.Image.
-    """
-    npimg = pic
-    mode = None
-    if isinstance(pic, torch.FloatTensor):
-      pic = pic.mul(255).byte()
-    if torch.is_tensor(pic):
-      npimg = np.transpose(pic.numpy(), (1, 2, 0))
-    assert isinstance(npimg, np.ndarray), 'pic should be Tensor or ndarray'
-    if npimg.shape[2] == 1:
-      npimg = npimg[:, :, 0]
+#   def __call__(self, pic):
+#     """
+#     Args:
+#       pic (Tensor or numpy.ndarray): Image to be converted to PIL.Image.
+#     Returns:
+#       PIL.Image: Image converted to PIL.Image.
+#     """
+#     npimg = pic
+#     mode = None
+#     if isinstance(pic, torch.FloatTensor):
+#       pic = pic.mul(255).byte()
+#     if torch.is_tensor(pic):
+#       npimg = np.transpose(pic.numpy(), (1, 2, 0))
+#     assert isinstance(npimg, np.ndarray), 'pic should be Tensor or ndarray'
+#     if npimg.shape[2] == 1:
+#       npimg = npimg[:, :, 0]
 
-      if npimg.dtype == np.uint8:
-        mode = 'L'
-      if npimg.dtype == np.int16:
-        mode = 'I;16'
-      if npimg.dtype == np.int32:
-        mode = 'I'
-      elif npimg.dtype == np.float32:
-        mode = 'F'
-    else:
-      if npimg.dtype == np.uint8:
-        mode = 'RGB'
-    assert mode is not None, '{} is not supported'.format(npimg.dtype)
-    return Image.fromarray(npimg, mode=mode)
+#       if npimg.dtype == np.uint8:
+#         mode = 'L'
+#       if npimg.dtype == np.int16:
+#         mode = 'I;16'
+#       if npimg.dtype == np.int32:
+#         mode = 'I'
+#       elif npimg.dtype == np.float32:
+#         mode = 'F'
+#     else:
+#       if npimg.dtype == np.uint8:
+#         mode = 'RGB'
+#     assert mode is not None, '{} is not supported'.format(npimg.dtype)
+#     return Image.fromarray(npimg, mode=mode)
 
 
 
@@ -325,40 +325,40 @@ class AugCrop(object):
     if is_list == False: imgs = imgs[0]
     return imgs, point_meta
 
-class AugRotate(object):
-  """Rotate the given PIL.Image at the center.
-  Args:
-    size (sequence or int): Desired output size of the crop. If size is an
-      int instead of sequence like (w, h), a square crop (size, size) is
-      made.
-  """
+# class AugRotate(object):
+#   """Rotate the given PIL.Image at the center.
+#   Args:
+#     size (sequence or int): Desired output size of the crop. If size is an
+#       int instead of sequence like (w, h), a square crop (size, size) is
+#       made.
+#   """
 
-  def __init__(self, max_rotate_degree):
-    assert isinstance(max_rotate_degree, numbers.Number)
-    self.max_rotate_degree = max_rotate_degree
+#   def __init__(self, max_rotate_degree):
+#     assert isinstance(max_rotate_degree, numbers.Number)
+#     self.max_rotate_degree = max_rotate_degree
 
-  def __call__(self, imgs, point_meta):
-    """
-    Args:
-      img (PIL.Image): Image to be cropped.
-      point_meta : Point_Meta
-    Returns:
-      PIL.Image: Rotated image.
-    """
-    point_meta = point_meta.copy()
-    if isinstance(imgs, list): is_list = True
-    else:                      is_list, imgs = False, [imgs]
+#   def __call__(self, imgs, point_meta):
+#     """
+#     Args:
+#       img (PIL.Image): Image to be cropped.
+#       point_meta : Point_Meta
+#     Returns:
+#       PIL.Image: Rotated image.
+#     """
+#     point_meta = point_meta.copy()
+#     if isinstance(imgs, list): is_list = True
+#     else:                      is_list, imgs = False, [imgs]
 
-    degree = (random.random() - 0.5) * 2 * self.max_rotate_degree
-    center = (imgs[0].size[0] / 2, imgs[0].size[1] / 2)
-    if PIL.__version__[0] == '4':
-      imgs = [ img.rotate(degree, center=center) for img in imgs ]
-    else:
-      imgs = [ img.rotate(degree) for img in imgs ]
+#     degree = (random.random() - 0.5) * 2 * self.max_rotate_degree
+#     center = (imgs[0].size[0] / 2, imgs[0].size[1] / 2)
+#     if PIL.__version__[0] == '4':
+#       imgs = [ img.rotate(degree, center=center) for img in imgs ]
+#     else:
+#       imgs = [ img.rotate(degree) for img in imgs ]
 
-    point_meta.apply_rotate(center, degree)
-    point_meta.apply_bound(imgs[0].size[0], imgs[0].size[1])
+#     point_meta.apply_rotate(center, degree)
+#     point_meta.apply_bound(imgs[0].size[0], imgs[0].size[1])
 
-    if is_list == False: imgs = imgs[0]
+#     if is_list == False: imgs = imgs[0]
 
-    return imgs, point_meta
+#     return imgs, point_meta

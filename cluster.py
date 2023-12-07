@@ -8,9 +8,10 @@ import numpy as np
 import torch
 import torchvision.datasets as visiondatasets
 import torchvision.transforms as visiontransforms
+import init_path
 import datasets
 from san_vision import transforms
-from utils import AverageMeter, print_log
+from utils import AverageMeter
 from utils import time_string, time_for_file
 import models, options
 from sklearn.cluster import KMeans
@@ -27,27 +28,15 @@ random.seed(args.manualSeed)
 torch.manual_seed(args.manualSeed)
 torch.cuda.manual_seed_all(args.manualSeed)
 torch.backends.cudnn.enabled   = True
-#torch.backends.cudnn.benchmark = True
 
 def main():
   # Init logger
   if not os.path.isdir(args.save_path): os.makedirs(args.save_path)
-  log = open(os.path.join(args.save_path, 'cluster_seed_{}_{}.txt'.format(args.manualSeed, time_for_file())), 'w')
-  print_log('save path : {}'.format(args.save_path), log)
-  print_log('------------ Options -------------', log)
-  for k, v in sorted(vars(args).items()):
-    print_log('Parameter : {:20} = {:}'.format(k, v), log)
-  print_log('-------------- End ----------------', log)
-  print_log("Random Seed: {}".format(args.manualSeed), log)
-  print_log("python version : {}".format(sys.version.replace('\n', ' ')), log)
-  print_log("Pillow version : {}".format(PIL.__version__), log)
-  print_log("torch  version : {}".format(torch.__version__), log)
-  print_log("cudnn  version : {}".format(torch.backends.cudnn.version()), log)
-
 
   # finetune resnet-152 to train style-discriminative features
   resnet = models.resnet152(True, num_classes=4)
   resnet = torch.nn.DataParallel(resnet).cuda()
+
   # define loss function (criterion) and optimizer
   criterion = torch.nn.CrossEntropyLoss().cuda()
   optimizer = torch.optim.SGD(resnet.parameters(), args.learning_rate,
@@ -57,9 +46,10 @@ def main():
   cls_eval_dir = args.style_eval_root
   assert osp.isdir(cls_train_dir), 'Does not know : {}'.format(cls_train_dir)
   # train data loader
+
+  # Normalize data with three chanel R G B
   vision_normalize = visiontransforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-  print_log('Training dir : {}'.format(cls_train_dir), log)
-  print_log('Evaluate dir : {}'.format(cls_eval_dir), log)
+  
   cls_train_dataset = visiondatasets.ImageFolder(
         cls_train_dir,
         visiontransforms.Compose([
@@ -87,7 +77,7 @@ def main():
 
   for epoch in range(args.epochs):
     learning_rate = adjust_learning_rate(optimizer, epoch, args)
-    print_log('epoch : [{}/{}] lr={}'.format(epoch, args.epochs, learning_rate), log)
+    print('epoch : [{}/{}] lr={}'.format(epoch, args.epochs, learning_rate))
     top1, losses = AverageMeter(), AverageMeter()
     resnet.train()
     for i, (inputs, target) in enumerate(cls_train_loader):
@@ -105,7 +95,7 @@ def main():
       loss.backward()
       optimizer.step()
       if i % args.print_freq == 0 or i+1 == len(cls_train_loader):
-        print_log(' [Train={:03d}] [{:}] [{:3d}/{:3d}] accuracy : {:.1f}, loss : {:.4f}, input:{:}, output:{:}'.format(epoch, time_string(), i, len(cls_train_loader), top1.avg, losses.avg, inputs.size(), output.size()), log)
+        print(' [Train={:03d}] [{:3d}/{:3d}] accuracy : {:.1f}, loss : {:.4f}, input:{:}, output:{:}'.format(epoch, i, len(cls_train_loader), top1.avg, losses.avg, inputs.size(), output.size()))
 
     if val_loader is None: continue
 
@@ -123,16 +113,20 @@ def main():
       top1.update(prec1.item(), inputs.size(0))
       losses.update(loss.item(), inputs.size(0))
       if i % args.print_freq_eval == 0 or i+1 == len(val_loader):
-        print_log(' [Evalu={:03d}] [{:}] [{:3d}/{:3d}] accuracy : {:.1f}, loss : {:.4f}, input:{:}, output:{:}'.format(epoch, time_string(), i, len(val_loader), top1.avg, losses.avg, inputs.size(), output.size()), log)
+        print(' [Evalu={:03d}] [{:3d}/{:3d}] accuracy : {:.1f}, loss : {:.4f}, input:{:}, output:{:}'.format(epoch, i, len(val_loader), top1.avg, losses.avg, inputs.size(), output.size()))
     
 
   # extract features
   resnet.eval()
   # General Data Argumentation
-  mean_fill   = tuple( [int(x*255) for x in [0.485, 0.456, 0.406] ] )
   normalize   = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                       std=[0.229, 0.224, 0.225])
-  transform  = transforms.Compose([transforms.PreCrop(args.pre_crop_expand), transforms.TrainScale2WH((args.crop_width, args.crop_height)),  transforms.ToTensor(), normalize])
+  transform  = transforms.Compose([
+              transforms.PreCrop(args.pre_crop_expand), 
+              transforms.TrainScale2WH((args.crop_width, args.crop_height)),  
+              transforms.ToTensor(), 
+              normalize
+              ])
 
   args.downsample = 8 # By default
   args.sigma = args.sigma * args.scale_eval
@@ -160,10 +154,10 @@ def main():
       features = features.cpu().numpy()
     all_features.append( features )
     if i % args.print_freq == 0:
-      print_log('{} {}/{} extract features'.format(time_string(), i, len(loader)), log)
+      print('{}/{} extract features'.format(i, len(loader)))
   all_features = np.concatenate(all_features, axis=0)
-  kmeans_result = KMeans(n_clusters=args.n_clusters, n_jobs=args.workers).fit( all_features )
-  print_log('kmeans [{}] calculate done'.format(args.n_clusters), log)
+  kmeans_result = KMeans(n_clusters=args.n_clusters).fit( all_features )
+  print('kmeans [{}] calculate done'.format(args.n_clusters))
   labels = kmeans_result.labels_.copy()
 
   cluster_idx = []
@@ -180,12 +174,12 @@ def main():
     #filtered_index = filter_cluster(indexes.copy(), cluster_features, 0.8)
     filtered_index = indexes.copy()
 
-    print_log('{:} [{:2d} / {:2d}] has {:4d} / {:4d} -> {:4d} = {:.2f} images'.format(time_string(), iL, args.n_clusters, indexes.size, len(data), len(filtered_index), indexes.size*1./len(data)), log)
+    print('[{:2d} / {:2d}] has {:4d} / {:4d} -> {:4d} = {:.2f} images'.format(iL, args.n_clusters, indexes.size, len(data), len(filtered_index), indexes.size*1./len(data)))
     indexes = filtered_index.copy()
     save_dir = osp.join(args.save_path, 'cluster-{:02d}-{:02d}'.format(iL, args.n_clusters))
     save_path = save_dir + '.lst'
     #if not osp.isdir(save_path): os.makedirs( save_path )
-    print_log('save into {}'.format(save_path), log)
+    print('save into {}'.format(save_path))
     txtfile = open( save_path , 'w')
     for idx in indexes:
       image_path = data.datas[idx]
